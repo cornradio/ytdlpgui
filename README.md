@@ -1,7 +1,9 @@
 # yt-dlp GUI
 
 一个简单的yt-dlp图形界面工具。
-install yt-dlp : https://github.com/yt-dlp/yt-dlp/wiki/Installation
+
+安装 yt-dlp (程序本体) : https://github.com/yt-dlp/yt-dlp/wiki/Installation
+yt-dlp 支持下载视频网站列表 : https://github.com/yt-dlp/yt-dlp/blob/master/supportedsites.md?plain=1
 
 ## 功能
 
