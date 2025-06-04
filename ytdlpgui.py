@@ -1,11 +1,11 @@
 import tkinter as tk
 from tkinter import ttk, scrolledtext, filedialog
 import subprocess
-import threading
 import queue
 import os
 from ttkthemes import ThemedTk
 import ctypes
+import webbrowser
 
 # 设置DPI感知
 try:
@@ -86,6 +86,10 @@ class YtDlpGUI:
         self.clear_button = ttk.Button(self.button_frame, text="Clear URL", command=self.clear_url)
         self.clear_button.pack(side=tk.LEFT, padx=8)
 
+        self.open_folder_button = ttk.Button(self.button_frame, text="Open Download Folder", 
+                                           command=self.open_download_folder, state=tk.NORMAL)
+        self.open_folder_button.pack(side=tk.LEFT, padx=8)
+
         # 日志区域
         self.log_frame = ttk.Frame(self.main_frame)
         self.log_frame.grid(row=4, column=0, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S))
@@ -100,10 +104,14 @@ class YtDlpGUI:
         self.bottom_frame = ttk.Frame(self.main_frame)
         self.bottom_frame.grid(row=5, column=0, columnspan=2, pady=15)
         
-        self.open_folder_button = ttk.Button(self.bottom_frame, text="Open Download Folder", 
-                                           command=self.open_download_folder, state=tk.NORMAL)
-        self.open_folder_button.pack(side=tk.LEFT, padx=8)
 
+        # GitHub Repository Button
+        self.github_button = ttk.Button(self.bottom_frame, text="GitHub", command=self.open_github_repo)
+        self.github_button.pack(side=tk.LEFT, padx=8)
+
+        # get ytdlp
+        self.get_ytdlp_button = ttk.Button(self.bottom_frame, text="yt-dlp", command=self.get_ytdlp)
+        self.get_ytdlp_button.pack(side=tk.LEFT, padx=8)
 
         # 配置网格权重
         master.grid_columnconfigure(0, weight=1)
@@ -117,6 +125,13 @@ class YtDlpGUI:
 
         self.queue = queue.Queue()
         self.master.after(100, self.process_queue)
+
+    def open_github_repo(self):
+        webbrowser.open("https://github.com/cornradio/ytdlpgui")
+
+    def get_ytdlp(self):
+        webbrowser.open('https://github.com/yt-dlp/yt-dlp/wiki/Installation')
+
 
     def toggle_proxy_entry(self):
         """
