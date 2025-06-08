@@ -6,6 +6,7 @@ import os
 from ttkthemes import ThemedTk
 import ctypes
 import webbrowser
+import configparser
 
 # 设置DPI感知
 try:
@@ -48,10 +49,18 @@ class YtDlpGUI:
         self.main_frame = ttk.Frame(master, padding="15")
         self.main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         
-        # 设置默认下载路径为用户的下载文件夹
-        self.download_path = os.path.join(os.path.expanduser("~"), "Downloads")
-        if not os.path.exists(self.download_path):
-            self.download_path = os.getcwd()
+        # 读取配置文件
+        self.config = configparser.ConfigParser()
+        try:
+            self.config.read('settings.ini')
+            self.download_path = self.config.get('Settings', 'download_path')
+            self.ytdlp_path = self.config.get('Settings', 'ytdlp_path')
+        except:
+            # 如果配置文件不存在或读取失败，使用默认值
+            self.download_path = os.path.join(os.path.expanduser("~"), "Downloads")
+            self.ytdlp_path = "yt-dlp"
+            if not os.path.exists(self.download_path):
+                self.download_path = os.getcwd()
 
         self.last_downloaded_file = None
 
@@ -76,6 +85,12 @@ class YtDlpGUI:
                                              variable=self.mp4_var)
         self.mp4_checkbutton.grid(row=2, column=0, padx=8, pady=8, sticky=tk.W)
 
+        # MP3格式选项
+        self.mp3_var = tk.BooleanVar()
+        self.mp3_checkbutton = ttk.Checkbutton(self.main_frame, text="Download as MP3",
+                                             variable=self.mp3_var)
+        self.mp3_checkbutton.grid(row=2, column=1, padx=8, pady=8, sticky=tk.W)
+
         # 按钮区域
         self.button_frame = ttk.Frame(self.main_frame)
         self.button_frame.grid(row=3, column=0, columnspan=2, pady=15)
@@ -85,10 +100,6 @@ class YtDlpGUI:
 
         self.clear_button = ttk.Button(self.button_frame, text="Clear URL", command=self.clear_url)
         self.clear_button.pack(side=tk.LEFT, padx=8)
-
-        self.open_folder_button = ttk.Button(self.button_frame, text="Open Download Folder", 
-                                           command=self.open_download_folder, state=tk.NORMAL)
-        self.open_folder_button.pack(side=tk.LEFT, padx=8)
 
         # 日志区域
         self.log_frame = ttk.Frame(self.main_frame)
@@ -104,14 +115,20 @@ class YtDlpGUI:
         self.bottom_frame = ttk.Frame(self.main_frame)
         self.bottom_frame.grid(row=5, column=0, columnspan=2, pady=15)
         
+        # 添加设置按钮
+        self.settings_button = ttk.Button(self.bottom_frame, text="Settings ⚙️", command=self.open_settings)
+        self.settings_button.pack(side=tk.LEFT, padx=8)
 
         # GitHub Repository Button
         self.github_button = ttk.Button(self.bottom_frame, text="GitHub", command=self.open_github_repo)
         self.github_button.pack(side=tk.LEFT, padx=8)
 
         # get ytdlp
-        self.get_ytdlp_button = ttk.Button(self.bottom_frame, text="yt-dlp", command=self.get_ytdlp)
+        self.get_ytdlp_button = ttk.Button(self.bottom_frame, text="Get yt-dlp", command=self.get_ytdlp)
         self.get_ytdlp_button.pack(side=tk.LEFT, padx=8)
+
+        self.open_folder_button = ttk.Button(self.bottom_frame, text="Open Folder 📂", command=self.open_download_folder, state=tk.NORMAL)
+        self.open_folder_button.pack(side=tk.LEFT, padx=8)
 
         # 配置网格权重
         master.grid_columnconfigure(0, weight=1)
@@ -132,6 +149,37 @@ class YtDlpGUI:
     def get_ytdlp(self):
         webbrowser.open('https://github.com/yt-dlp/yt-dlp/wiki/Installation')
 
+    def open_settings(self):
+        """打开 settings.ini 文件"""
+        settings_path = os.path.abspath('settings.ini')
+        if os.path.exists(settings_path):
+            try:
+                if os.name == 'nt':  # Windows
+                    os.system(f'notepad "{settings_path}"')
+                elif os.uname().sysname == 'Darwin':  # macOS
+                    subprocess.run(['open', '-a', 'TextEdit', settings_path])
+                else:  # Linux
+                    subprocess.run(['xdg-open', settings_path])
+                self.log(f"opened settings.ini: {settings_path}")
+                self.log(f"download_path: {self.download_path}")
+                self.log(f"ytdlp_path: {self.ytdlp_path}")
+                # 刷新配置文件
+                self.config.read('settings.ini')
+                self.download_path = self.config.get('Settings', 'download_path')
+                self.ytdlp_path = self.config.get('Settings', 'ytdlp_path')
+            except Exception as e:
+                self.log(f"can't open settings.ini: {e}")
+        else:
+            self.log(f"settings.ini not found: {settings_path}")
+            self.log(f"create settings.ini")
+            USERNAME = os.getlogin()
+            self.config['Settings'] = {
+                'download_path': f'C:\\Users\\{USERNAME}\\Downloads',
+                'ytdlp_path': 'yt-dlp'
+            }
+            with open('settings.ini', 'w') as f:
+                self.config.write(f)
+            self.open_settings()
 
     def toggle_proxy_entry(self):
         """
@@ -154,7 +202,8 @@ class YtDlpGUI:
             self.log("Error: Please enter a URL.")
             return
 
-        command = ["yt-dlp", url]
+        # 使用配置文件中的 ytdlp 路径
+        command = [self.ytdlp_path, url]
         
         proxy_address = None
         if self.proxy_var.get():
@@ -170,9 +219,13 @@ class YtDlpGUI:
         if self.mp4_var.get():
             command.extend(["-f", "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best"])
         
+        # Add format selection for MP3
+        if self.mp3_var.get():
+            command.extend(["--extract-audio", "--audio-format", "mp3"])
+        
         command.extend(["-o", "%(title)s-%(id)s.%(ext)s"])
         
-        # 直接使用默认下载路径
+        # 使用配置文件中的下载路径
         command.extend(["-P", self.download_path])
         self.log(f"Files will be downloaded to: {self.download_path}")
 
