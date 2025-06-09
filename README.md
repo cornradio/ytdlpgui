@@ -32,8 +32,20 @@ clear.bat
 build.bat
 ```
 
-## 依赖
-
+## python依赖
 - Python 3.x
 - ttkthemes
-- yt-dlp 
+- yt-dlp
+
+## 下载
+ytdlpgui
+https://github.com/cornradio/ytdlpgui/releases/tag/v2  
+
+依赖下载（exe)  
+ytdlp.exe https://github.com/yt-dlp/yt-dlp/releases/tag/2025.05.22  
+ffmpeg.exe https://github.com/ffbinaries/ffbinaries-prebuilt/releases  
+
+完整版 ytdlpgui + ffmpeg + ytdlp 压缩包直接下载
+https://kasusa.lanzoul.com/i4gW92yf241e  
+
+
