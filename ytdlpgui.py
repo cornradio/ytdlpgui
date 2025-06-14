@@ -138,7 +138,7 @@ class YtDlpGUI:
 
         # 设置窗口最小尺寸
         master.update_idletasks()
-        master.minsize(800, 600)
+        master.minsize(500, 400)
 
         self.queue = queue.Queue()
         self.master.after(100, self.process_queue)
@@ -223,7 +223,7 @@ class YtDlpGUI:
         if self.mp3_var.get():
             command.extend(["--extract-audio", "--audio-format", "mp3"])
         
-        command.extend(["-o", "%(title)s-%(id)s.%(ext)s"])
+        command.extend(["-o", "\'%(title)s-%(id)s.%(ext)s\'"])
         
         # 使用配置文件中的下载路径
         command.extend(["-P", self.download_path])
