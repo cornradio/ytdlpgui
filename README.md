@@ -39,7 +39,10 @@ build.bat
 
 ## 下载
 ytdlpgui
-https://github.com/cornradio/ytdlpgui/releases/tag/v2  
+https://github.com/cornradio/ytdlpgui/releases/
+
+ytdlpgui（支持cookie的版本）
+https://github.com/cornradio/ytdlpgui/issues/2
 
 依赖下载（exe)  
 ytdlp.exe https://github.com/yt-dlp/yt-dlp/releases/tag/2025.05.22  
