@@ -203,7 +203,7 @@ class YtDlpGUI:
             return
 
         # 使用配置文件中的 ytdlp 路径
-        command = [self.ytdlp_path, "'" + url+"'"]
+        command = [self.ytdlp_path, url] # mac 需要加入两个单引号抱住url
         
         proxy_address = None
         if self.proxy_var.get():
