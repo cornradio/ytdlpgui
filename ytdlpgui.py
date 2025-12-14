@@ -613,11 +613,17 @@ if __name__ == '__main__':
     root = ThemedTk(theme="equilux")
     root.configure(bg='#2b2b2b')  # 设置窗口背景为深黑色，菜单栏也会是黑色
     
-    # 设置窗口图标（如果有的话）
+    # 设置窗口图标（标题栏和任务栏）
     try:
-        root.iconbitmap("icon.ico")  # 如果有图标文件的话
-    except:
-        pass
+        # 使用 icon.png 设置图标
+        icon_image = tk.PhotoImage(file="icon.png")
+        root.iconphoto(True, icon_image)  # True 表示同时设置任务栏图标
+    except Exception as e:
+        # 如果加载失败，尝试使用 iconbitmap（适用于 .ico 文件）
+        try:
+            root.iconbitmap("icon.ico")
+        except:
+            pass
         
     gui = YtDlpGUI(root)
     root.mainloop()
