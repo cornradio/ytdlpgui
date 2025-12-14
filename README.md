@@ -1,3 +1,5 @@
+<img width="301" height="301" alt="icon" src="https://github.com/user-attachments/assets/9d62974d-0f93-4269-9a7e-518cb811a3e1" />
+
 # yt-dlp GUI
 
 一个简单的yt-dlp图形界面工具。(测试支持 youtube tiktok bilibili）
