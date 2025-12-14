@@ -51,7 +51,10 @@ class YtDlpGUI:
 
         # 创建主框架
         self.main_frame = ttk.Frame(master, padding="15")
-        self.main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        self.main_frame.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        
+        # 创建顶部菜单栏
+        self.create_menu_bar()
         
         # 读取配置文件
         self.config = configparser.ConfigParser()
@@ -71,12 +74,23 @@ class YtDlpGUI:
         # URL输入区域
         self.url_label = ttk.Label(self.main_frame, text="URL:")
         self.url_label.grid(row=0, column=0, padx=12, pady=(12, 6), sticky=tk.W)
-        self.url_entry = ttk.Entry(self.main_frame, width=60)
-        self.url_entry.grid(row=0, column=1, padx=12, pady=(12, 6), sticky=tk.W + tk.E)
+        
+        # URL输入框和清除按钮的容器
+        self.url_frame = ttk.Frame(self.main_frame)
+        self.url_frame.grid(row=0, column=1, padx=12, pady=(12, 6), sticky=tk.W + tk.E)
+        
+        self.url_entry = ttk.Entry(self.url_frame, width=60)
+        self.url_entry.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        self.url_entry.bind('<Return>', lambda e: self.start_download())  # Enter 键触发下载
+        
+        self.clear_button = ttk.Button(self.url_frame, text="Clear", width=5, command=self.clear_url)
+        self.clear_button.pack(side=tk.LEFT, padx=(4, 0))
+        
+        self.url_frame.grid_columnconfigure(0, weight=1)
 
         # 代理设置
         self.proxy_var = tk.BooleanVar()
-        self.use_proxy_checkbutton = ttk.Checkbutton(self.main_frame, text="Use Proxy (e.g., 127.0.0.1:7890)",
+        self.use_proxy_checkbutton = ttk.Checkbutton(self.main_frame, text="Use Proxy",
                                                      variable=self.proxy_var, command=self.toggle_proxy_entry)
         self.use_proxy_checkbutton.grid(row=1, column=0, padx=12, pady=6, sticky=tk.W)
 
@@ -109,15 +123,11 @@ class YtDlpGUI:
                                              variable=self.mp3_var)
         self.mp3_checkbutton.pack(side=tk.LEFT, padx=8)
 
-        # 按钮区域
-        self.button_frame = ttk.Frame(self.main_frame)
-        self.button_frame.grid(row=4, column=0, columnspan=2, pady=(12, 12))
+        # # 按钮区域
+        # self.button_frame = ttk.Frame(self.main_frame)
+        # self.button_frame.grid(row=4, column=0, columnspan=2, pady=(12, 12))
         
-        self.download_button = ttk.Button(self.button_frame, text="Download", command=self.start_download)
-        self.download_button.pack(side=tk.LEFT, padx=8)
 
-        self.clear_button = ttk.Button(self.button_frame, text="Clear URL", command=self.clear_url)
-        self.clear_button.pack(side=tk.LEFT, padx=8)
 
         # 历史记录和日志切换区域
         self.content_frame = ttk.Frame(self.main_frame)
@@ -130,6 +140,15 @@ class YtDlpGUI:
         self.show_history_var = tk.BooleanVar(value=True)  # 默认显示历史记录
         self.toggle_button = ttk.Button(self.toggle_frame, text="显示日志", command=self.toggle_content)
         self.toggle_button.pack(side=tk.LEFT, padx=0)
+        
+        # 打开下载文件夹按钮
+        self.open_folder_button = ttk.Button(self.toggle_frame, text="打开下载文件夹", command=self.open_download_folder)
+        self.open_folder_button.pack(side=tk.LEFT, padx=(12, 0))
+
+        # self.download_button = ttk.Button(self.toggle_frame, text="Download", command=self.start_download )
+        self.download_button = ttk.Button(self.toggle_frame, text="Download", command=self.start_download , style='TButton')
+
+        self.download_button.pack(side=tk.RIGHT, padx=8)
         
         # 历史记录区域
         self.history_label = ttk.Label(self.content_frame, text="历史记录:")
@@ -162,32 +181,9 @@ class YtDlpGUI:
         # 默认显示历史记录，隐藏日志
         self.log_frame.pack_forget()
 
-        # 底部按钮区域
-        self.bottom_frame = ttk.Frame(self.main_frame)
-        self.bottom_frame.grid(row=6, column=0, columnspan=2, pady=(0, 12))
-        
-        # 添加设置按钮
-        self.settings_button = ttk.Button(self.bottom_frame, text="Settings ⚙️", command=self.open_settings)
-        self.settings_button.pack(side=tk.LEFT, padx=8)
-
-        # GitHub Repository Button
-        self.github_button = ttk.Button(self.bottom_frame, text="GitHub", command=self.open_github_repo)
-        self.github_button.pack(side=tk.LEFT, padx=8)
-
-        # get ytdlp
-        self.get_ytdlp_button = ttk.Button(self.bottom_frame, text="Get yt-dlp", command=self.get_ytdlp)
-        self.get_ytdlp_button.pack(side=tk.LEFT, padx=8)
-
-        # get ytdlp
-        self.get_ffmpeg_button = ttk.Button(self.bottom_frame, text="Get ffmpeg", command=self.get_ffmpeg)
-        self.get_ffmpeg_button.pack(side=tk.LEFT, padx=8)
-
-        self.open_folder_button = ttk.Button(self.bottom_frame, text="Open Folder 📂", command=self.open_download_folder, state=tk.NORMAL)
-        self.open_folder_button.pack(side=tk.LEFT, padx=8)
-
         # 配置网格权重
         master.grid_columnconfigure(0, weight=1)
-        master.grid_rowconfigure(0, weight=1)
+        master.grid_rowconfigure(1, weight=1)  # 主框架可扩展
         self.main_frame.grid_columnconfigure(1, weight=1)
         self.main_frame.grid_rowconfigure(5, weight=1)  # 内容区域可扩展
 
@@ -197,6 +193,52 @@ class YtDlpGUI:
 
         self.queue = queue.Queue()
         self.master.after(100, self.process_queue)
+
+    def create_menu_bar(self):
+        """创建顶部菜单栏（使用 ttk 组件）"""
+        # 创建菜单栏框架
+        self.menubar_frame = ttk.Frame(self.master)
+        self.menubar_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), padx=0, pady=0)
+        self.menubar_frame.configure(style='TFrame')
+        
+        # Help 按钮
+        self.help_button = ttk.Menubutton(self.menubar_frame, text="Help", direction='below')
+        self.help_button.pack(side=tk.LEFT, padx=(0, 0))
+        
+        # 创建 Help 下拉菜单
+        help_menu = tk.Menu(self.help_button, tearoff=0, bg='#2b2b2b', fg='white',
+                           activebackground='#404040', activeforeground='white',
+                           selectcolor='#404040', borderwidth=1)
+        self.help_button['menu'] = help_menu
+        
+        help_menu.add_command(label="GitHub Repository", command=self.open_github_repo)
+        help_menu.add_command(label="快速答疑 FAQ", command=self.open_github_faq)
+        help_menu.add_command(label="bilibili 视频教程", command=self.open_bilibili_video)
+        help_menu.add_separator()
+        help_menu.add_command(label="下载 yt-dlp", command=self.get_ytdlp)
+        help_menu.add_command(label="下载 ffmpeg", command=self.get_ffmpeg)
+        
+        # 分隔符标签
+        separator_label = ttk.Label(self.menubar_frame, text="||", foreground='#888888')
+        separator_label.pack(side=tk.LEFT, padx=(8, 8))
+        
+        # 版本信息标签
+        version_label = ttk.Label(self.menubar_frame, text="ytdlpGUI v2.2 by kasusa", foreground='#888888')
+        version_label.pack(side=tk.LEFT, padx=(0, 8))
+        
+        # 配置菜单栏样式
+        self.style.configure('TMenubutton', background='#2b2b2b', foreground='white', 
+                            borderwidth=0, padding=(8, 4), relief='flat')
+        self.style.map('TMenubutton',
+                      background=[('active', '#404040'), ('!active', '#2b2b2b'), ('pressed', '#404040')],
+                      foreground=[('active', 'white'), ('!active', 'white')],
+                      relief=[('active', 'flat'), ('!active', 'flat')])
+        
+        # 确保菜单栏框架背景是黑色
+        self.style.configure('TFrame', background='#464646')
+        # 为菜单栏框架单独设置样式
+        self.menubar_frame.configure(style='TFrame')
+
 
     def toggle_content(self):
         """切换历史记录和日志显示"""
@@ -217,6 +259,11 @@ class YtDlpGUI:
 
     def open_github_repo(self):
         webbrowser.open("https://github.com/cornradio/ytdlpgui")
+
+    def open_github_faq(self):
+        webbrowser.open("https://github.com/cornradio/ytdlpgui/blob/main/how-to-use-cookie.md")
+    def open_bilibili_video(self):
+        webbrowser.open("https://www.bilibili.com/video/BV1oJ7ezEEqK")
 
     def get_ytdlp(self):
         webbrowser.open('https://github.com/yt-dlp/yt-dlp/wiki/Installation')
@@ -564,7 +611,7 @@ class YtDlpGUI:
 
 if __name__ == '__main__':
     root = ThemedTk(theme="equilux")
-    root.configure(bg='#464646')
+    root.configure(bg='#2b2b2b')  # 设置窗口背景为深黑色，菜单栏也会是黑色
     
     # 设置窗口图标（如果有的话）
     try:
