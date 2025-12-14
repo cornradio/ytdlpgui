@@ -2,3 +2,5 @@ dist/
 build/
 ytdlpgui.spec
 .DS_Store
+cookie.txt
+.vscode/

@@ -7,6 +7,10 @@ from ttkthemes import ThemedTk
 import ctypes
 import webbrowser
 import configparser
+import shutil
+import tempfile
+import json
+from datetime import datetime
 
 # 设置DPI感知
 try:
@@ -66,34 +70,48 @@ class YtDlpGUI:
 
         # URL输入区域
         self.url_label = ttk.Label(self.main_frame, text="URL:")
-        self.url_label.grid(row=0, column=0, padx=8, pady=8, sticky=tk.W)
+        self.url_label.grid(row=0, column=0, padx=12, pady=(12, 6), sticky=tk.W)
         self.url_entry = ttk.Entry(self.main_frame, width=60)
-        self.url_entry.grid(row=0, column=1, padx=8, pady=8, sticky=tk.W + tk.E)
+        self.url_entry.grid(row=0, column=1, padx=12, pady=(12, 6), sticky=tk.W + tk.E)
 
         # 代理设置
         self.proxy_var = tk.BooleanVar()
         self.use_proxy_checkbutton = ttk.Checkbutton(self.main_frame, text="Use Proxy (e.g., 127.0.0.1:7890)",
                                                      variable=self.proxy_var, command=self.toggle_proxy_entry)
-        self.use_proxy_checkbutton.grid(row=1, column=0, padx=8, pady=8, sticky=tk.W)
+        self.use_proxy_checkbutton.grid(row=1, column=0, padx=12, pady=6, sticky=tk.W)
 
         self.proxy_entry = ttk.Entry(self.main_frame, width=60, state=tk.DISABLED)
-        self.proxy_entry.grid(row=1, column=1, padx=8, pady=8, sticky=tk.W + tk.E)
+        self.proxy_entry.grid(row=1, column=1, padx=12, pady=6, sticky=tk.W + tk.E)
 
-        # MP4格式选项
+        # Cookie设置
+        self.cookie_var = tk.BooleanVar()
+        self.cookie_frame = ttk.Frame(self.main_frame)
+        self.cookie_frame.grid(row=2, column=0, columnspan=2, padx=12, pady=6, sticky=tk.W)
+        
+        self.use_cookie_checkbutton = ttk.Checkbutton(self.cookie_frame, text="Use Cookie",
+                                                     variable=self.cookie_var)
+        self.use_cookie_checkbutton.pack(side=tk.LEFT, padx=(0, 8))
+        
+        self.edit_cookie_button = ttk.Button(self.cookie_frame, text="编辑 Cookie", command=self.open_cookie_file)
+        self.edit_cookie_button.pack(side=tk.LEFT, padx=8)
+
+        # 格式选项区域
+        self.format_frame = ttk.Frame(self.main_frame)
+        self.format_frame.grid(row=3, column=0, columnspan=2, padx=12, pady=6, sticky=tk.W)
+        
         self.mp4_var = tk.BooleanVar()
-        self.mp4_checkbutton = ttk.Checkbutton(self.main_frame, text="Download as MP4",
+        self.mp4_checkbutton = ttk.Checkbutton(self.format_frame, text="Download as MP4",
                                              variable=self.mp4_var)
-        self.mp4_checkbutton.grid(row=2, column=0, padx=8, pady=8, sticky=tk.W)
-
-        # MP3格式选项
+        self.mp4_checkbutton.pack(side=tk.LEFT, padx=(0, 16))
+        
         self.mp3_var = tk.BooleanVar()
-        self.mp3_checkbutton = ttk.Checkbutton(self.main_frame, text="Download as MP3",
+        self.mp3_checkbutton = ttk.Checkbutton(self.format_frame, text="Download as MP3",
                                              variable=self.mp3_var)
-        self.mp3_checkbutton.grid(row=2, column=1, padx=8, pady=8, sticky=tk.W)
+        self.mp3_checkbutton.pack(side=tk.LEFT, padx=8)
 
         # 按钮区域
         self.button_frame = ttk.Frame(self.main_frame)
-        self.button_frame.grid(row=3, column=0, columnspan=2, pady=15)
+        self.button_frame.grid(row=4, column=0, columnspan=2, pady=(12, 12))
         
         self.download_button = ttk.Button(self.button_frame, text="Download", command=self.start_download)
         self.download_button.pack(side=tk.LEFT, padx=8)
@@ -101,19 +119,52 @@ class YtDlpGUI:
         self.clear_button = ttk.Button(self.button_frame, text="Clear URL", command=self.clear_url)
         self.clear_button.pack(side=tk.LEFT, padx=8)
 
-        # 日志区域
-        self.log_frame = ttk.Frame(self.main_frame)
-        self.log_frame.grid(row=4, column=0, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S))
+        # 历史记录和日志切换区域
+        self.content_frame = ttk.Frame(self.main_frame)
+        self.content_frame.grid(row=5, column=0, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S), padx=12, pady=(0, 12))
         
+        # 切换按钮区域
+        self.toggle_frame = ttk.Frame(self.content_frame)
+        self.toggle_frame.pack(fill=tk.X, padx=0, pady=(0, 8))
+        
+        self.show_history_var = tk.BooleanVar(value=True)  # 默认显示历史记录
+        self.toggle_button = ttk.Button(self.toggle_frame, text="显示日志", command=self.toggle_content)
+        self.toggle_button.pack(side=tk.LEFT, padx=0)
+        
+        # 历史记录区域
+        self.history_label = ttk.Label(self.content_frame, text="历史记录:")
+        self.history_label.pack(anchor=tk.W, padx=0, pady=(0, 4))
+        
+        self.history_frame = ttk.Frame(self.content_frame)
+        self.history_frame.pack(fill=tk.BOTH, expand=True, padx=0, pady=0)
+        
+        self.history_listbox = tk.Listbox(self.history_frame, bg='#2b2b2b', fg='white',
+                                          selectbackground='#404040', font=('Segoe UI', 9))
+        self.history_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        self.history_listbox.bind('<Double-Button-1>', self.on_history_select)
+        
+        history_scrollbar = ttk.Scrollbar(self.history_frame, orient=tk.VERTICAL, command=self.history_listbox.yview)
+        history_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        self.history_listbox.config(yscrollcommand=history_scrollbar.set)
+        
+        # 日志区域（默认隐藏）
+        self.log_frame = ttk.Frame(self.content_frame)
         self.log_text = scrolledtext.ScrolledText(self.log_frame, width=80, height=25, 
                                                 bg='#2b2b2b', fg='white', insertbackground='white',
                                                 font=('Consolas', 10))
         self.log_text.pack(fill=tk.BOTH, expand=True)
         self.log_text.config(state=tk.DISABLED)
+        
+        # 历史记录文件路径
+        self.history_file = 'download_history.json'
+        self.load_history()
+        
+        # 默认显示历史记录，隐藏日志
+        self.log_frame.pack_forget()
 
         # 底部按钮区域
         self.bottom_frame = ttk.Frame(self.main_frame)
-        self.bottom_frame.grid(row=5, column=0, columnspan=2, pady=15)
+        self.bottom_frame.grid(row=6, column=0, columnspan=2, pady=(0, 12))
         
         # 添加设置按钮
         self.settings_button = ttk.Button(self.bottom_frame, text="Settings ⚙️", command=self.open_settings)
@@ -127,6 +178,10 @@ class YtDlpGUI:
         self.get_ytdlp_button = ttk.Button(self.bottom_frame, text="Get yt-dlp", command=self.get_ytdlp)
         self.get_ytdlp_button.pack(side=tk.LEFT, padx=8)
 
+        # get ytdlp
+        self.get_ffmpeg_button = ttk.Button(self.bottom_frame, text="Get ffmpeg", command=self.get_ffmpeg)
+        self.get_ffmpeg_button.pack(side=tk.LEFT, padx=8)
+
         self.open_folder_button = ttk.Button(self.bottom_frame, text="Open Folder 📂", command=self.open_download_folder, state=tk.NORMAL)
         self.open_folder_button.pack(side=tk.LEFT, padx=8)
 
@@ -134,7 +189,7 @@ class YtDlpGUI:
         master.grid_columnconfigure(0, weight=1)
         master.grid_rowconfigure(0, weight=1)
         self.main_frame.grid_columnconfigure(1, weight=1)
-        self.main_frame.grid_rowconfigure(4, weight=1)
+        self.main_frame.grid_rowconfigure(5, weight=1)  # 内容区域可扩展
 
         # 设置窗口最小尺寸
         master.update_idletasks()
@@ -143,11 +198,107 @@ class YtDlpGUI:
         self.queue = queue.Queue()
         self.master.after(100, self.process_queue)
 
+    def toggle_content(self):
+        """切换历史记录和日志显示"""
+        if self.show_history_var.get():
+            # 切换到日志
+            self.history_frame.pack_forget()
+            self.history_label.pack_forget()
+            self.log_frame.pack(fill=tk.BOTH, expand=True, padx=0, pady=0)
+            self.toggle_button.config(text="显示历史记录")
+            self.show_history_var.set(False)
+        else:
+            # 切换到历史记录
+            self.log_frame.pack_forget()
+            self.history_label.pack(anchor=tk.W, padx=0, pady=(0, 4))
+            self.history_frame.pack(fill=tk.BOTH, expand=True, padx=0, pady=0)
+            self.toggle_button.config(text="显示日志")
+            self.show_history_var.set(True)
+
     def open_github_repo(self):
         webbrowser.open("https://github.com/cornradio/ytdlpgui")
 
     def get_ytdlp(self):
         webbrowser.open('https://github.com/yt-dlp/yt-dlp/wiki/Installation')
+    def get_ffmpeg(self):
+        webbrowser.open('https://github.com/ffbinaries/ffbinaries-prebuilt/releases')
+
+    def load_history(self):
+        """加载历史记录"""
+        try:
+            if os.path.exists(self.history_file):
+                with open(self.history_file, 'r', encoding='utf-8') as f:
+                    self.history_data = json.load(f)
+            else:
+                self.history_data = []
+            self.update_history_display()
+        except Exception as e:
+            self.log(f"Error loading history: {e}")
+            self.history_data = []
+
+    def save_history(self):
+        """保存历史记录"""
+        try:
+            with open(self.history_file, 'w', encoding='utf-8') as f:
+                json.dump(self.history_data, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            self.log(f"Error saving history: {e}")
+
+    def update_history_display(self):
+        """更新历史记录显示"""
+        self.history_listbox.delete(0, tk.END)
+        # 按时间倒序显示，最新的在前面
+        for item in reversed(self.history_data[-50:]):  # 只显示最近50条
+            title = item.get('title', 'Unknown')
+            url = item.get('url', '')
+            # 截断过长的标题和URL
+            if len(title) > 40:
+                title = title[:37] + "..."
+            if len(url) > 40:
+                url = url[:37] + "..."
+            display_text = f"{title} | {url}"
+            self.history_listbox.insert(0, display_text)
+
+    def add_to_history(self, url, title=None):
+        """添加历史记录"""
+        # 检查是否已存在相同的URL
+        for item in self.history_data:
+            if item.get('url') == url:
+                # 更新现有记录的时间
+                item['timestamp'] = datetime.now().isoformat()
+                if title:
+                    item['title'] = title
+                self.save_history()
+                self.update_history_display()
+                return
+        
+        # 添加新记录
+        history_item = {
+            'url': url,
+            'title': title or 'Unknown',
+            'timestamp': datetime.now().isoformat()
+        }
+        self.history_data.append(history_item)
+        # 限制历史记录数量，最多保存1000条
+        if len(self.history_data) > 1000:
+            self.history_data = self.history_data[-1000:]
+        self.save_history()
+        self.update_history_display()
+
+    def on_history_select(self, event):
+        """双击历史记录项时填充URL"""
+        selection = self.history_listbox.curselection()
+        if selection and self.history_data:
+            index = selection[0]
+            # 由于显示是倒序的，需要转换索引
+            # 只显示最近50条，所以需要计算实际索引
+            displayed_count = min(50, len(self.history_data))
+            actual_index = len(self.history_data) - 1 - index
+            if 0 <= actual_index < len(self.history_data):
+                url = self.history_data[actual_index].get('url', '')
+                self.url_entry.delete(0, tk.END)
+                self.url_entry.insert(0, url)
+                self.log(f"Selected from history: {self.history_data[actual_index].get('title', 'Unknown')}")
 
     def open_settings(self):
         """打开 settings.ini 文件"""
@@ -195,12 +346,84 @@ class YtDlpGUI:
             self.proxy_entry.delete(0, tk.END) # Clear content when disabling
             self.proxy_entry.config(state=tk.DISABLED)
 
+    def open_cookie_file(self):
+        """打开或创建 cookie.txt 文件供用户编辑"""
+        cookie_path = os.path.abspath('cookie.txt')
+        
+        # 如果文件不存在，创建一个空的 Netscape 格式模板
+        if not os.path.exists(cookie_path):
+            try:
+                with open(cookie_path, 'w', encoding='utf-8') as f:
+                    f.write("# Netscape HTTP Cookie File\n")
+                    f.write("# This file was generated by ytdlpgui\n")
+                    f.write("# You can edit this file with your cookies\n\n")
+                self.log(f"Created cookie.txt: {cookie_path}")
+            except Exception as e:
+                self.log(f"Error creating cookie.txt: {e}")
+                return
+        
+        # 打开文件
+        try:
+            if os.name == 'nt':  # Windows
+                os.system(f'notepad "{cookie_path}"')
+            elif os.uname().sysname == 'Darwin':  # macOS
+                subprocess.run(['open', '-a', 'TextEdit', cookie_path])
+            else:  # Linux
+                subprocess.run(['xdg-open', cookie_path])
+            self.log(f"Opened cookie.txt: {cookie_path}")
+        except Exception as e:
+            self.log(f"Error opening cookie.txt: {e}")
+
+    def get_video_title(self, url):
+        """获取视频标题"""
+        try:
+            # 构建获取信息的命令
+            info_command = [self.ytdlp_path, url, "--print", "%(title)s", "--no-download"]
+            
+            # 添加代理设置（如果启用）
+            if self.proxy_var.get():
+                proxy_address = self.proxy_entry.get()
+                if proxy_address:
+                    info_command.extend(["--proxy", proxy_address])
+            
+            # 添加cookie设置（如果启用）
+            if self.cookie_var.get():
+                cookie_path = os.path.abspath('cookie.txt')
+                if os.path.exists(cookie_path):
+                    try:
+                        temp_cookie_file = tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False)
+                        temp_cookie_file.close()
+                        shutil.copy2(cookie_path, temp_cookie_file.name)
+                        info_command.extend(["--cookies", temp_cookie_file.name])
+                    except:
+                        pass
+            
+            result = subprocess.run(info_command, capture_output=True, text=True, timeout=15)
+            if result.returncode == 0:
+                title = result.stdout.strip()
+                return title if title else None
+        except subprocess.TimeoutExpired:
+            self.log("Timeout getting video title")
+        except Exception as e:
+            self.log(f"Could not get video title: {e}")
+        return None
+
     def start_download(self):
         url = self.url_entry.get()
         
         if not url:
             self.log("Error: Please enter a URL.")
             return
+
+        # 获取视频标题并添加到历史记录
+        self.log("Getting video information...")
+        video_title = self.get_video_title(url)
+        if video_title:
+            self.add_to_history(url, video_title)
+            self.log(f"Video title: {video_title}")
+        else:
+            # 即使获取标题失败，也记录URL
+            self.add_to_history(url, None)
 
         # 使用配置文件中的 ytdlp 路径
         command = [self.ytdlp_path, url] # mac 需要加入两个单引号抱住url
@@ -213,11 +436,40 @@ class YtDlpGUI:
                 return
             command.extend(["--proxy", proxy_address])
 
+        # Cookie设置
+        if self.cookie_var.get():
+            cookie_path = os.path.abspath('cookie.txt')
+            if not os.path.exists(cookie_path):
+                self.log("Error: 'Use Cookie' is checked, but cookie.txt file not found. Please click '编辑 Cookie' to create and edit the file.")
+                return
+            # 检查文件是否为空
+            try:
+                with open(cookie_path, 'r', encoding='utf-8') as f:
+                    content = f.read().strip()
+                    if not content or content.startswith('#') and len(content.split('\n')) <= 3:
+                        self.log("Warning: cookie.txt appears to be empty or only contains comments. Please add your cookies.")
+            except Exception as e:
+                self.log(f"Error reading cookie.txt: {e}")
+                return
+            
+            # 复制 cookie 文件到临时文件，避免 yt-dlp 修改原始文件
+            try:
+                temp_cookie_file = tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False)
+                temp_cookie_file.close()
+                shutil.copy2(cookie_path, temp_cookie_file.name)
+                command.extend(["--cookies", temp_cookie_file.name])
+                self.log(f"Using cookies from: {cookie_path} (copied to temp file to prevent modification)")
+            except Exception as e:
+                self.log(f"Error copying cookie file: {e}")
+                return
+
         command.extend(["-U"])
         
         # Add format selection for MP4
         if self.mp4_var.get():
             command.extend(["-f", "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best"])
+            # 添加自动合并参数，确保视频和音频自动合并
+            command.extend(["--merge-output-format", "mp4"])
         
         # Add format selection for MP3
         if self.mp3_var.get():
