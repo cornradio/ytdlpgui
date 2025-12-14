@@ -2,24 +2,27 @@
 
 一个简单的yt-dlp图形界面工具。(测试支持 youtube tiktok bilibili）
 
-安装 yt-dlp (程序本体) : https://github.com/yt-dlp/yt-dlp/wiki/Installation  
-yt-dlp 支持下载视频网站列表 : https://github.com/yt-dlp/yt-dlp/blob/master/supportedsites.md?plain=1
+安装 yt-dlp (程序依赖) : https://github.com/yt-dlp/yt-dlp/wiki/Installation  
+支持下载视频网站列表 : https://github.com/yt-dlp/yt-dlp/blob/master/supportedsites.md?plain=1
 
 ![image](https://github.com/user-attachments/assets/abe642ae-b826-4cc1-947e-cf06ee7a1e55)
 
+## FAQ
+查看[快速答疑指南](https://github.com/cornradio/ytdlpgui/blob/main/how-to-use-cookie.md)
 
 ## 功能
 
 - 下载视频
 - 支持代理设置
+- 支持使用cookie下载
 - 支持MP4格式下载
-- 黑色主题界面
+- 简洁主题界面
 
 ## 使用方法
 
 1. 输入视频URL
 2. 选择是否需要代理
-3. 选择是否需要MP4格式
+3. 选择是否需要使用cookie
 4. 点击Download开始下载
 
 ## 打包
@@ -37,7 +40,7 @@ build.bat
 - ttkthemes
 - yt-dlp
 
-## 下载
+## 其他下载
 ytdlpgui
 https://github.com/cornradio/ytdlpgui/releases/
 
