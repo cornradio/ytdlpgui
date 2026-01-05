@@ -57,3 +57,12 @@ ffmpeg.exe https://github.com/ffbinaries/ffbinaries-prebuilt/releases
 https://kasusa.lanzoul.com/i4gW92yf241e  
 
 
+
+## 更新日志
+
+### 2026-01-05
+
+-  下载按钮改成绿色
+-  url 自动删除参数
+-  允许清空历史记录
+-  增加状态栏和修改程序 UI 布局

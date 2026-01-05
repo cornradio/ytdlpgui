@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import ttk, scrolledtext, filedialog
+from tkinter import ttk, scrolledtext, filedialog, messagebox
 import subprocess
 import queue
 import os
@@ -38,6 +38,12 @@ class YtDlpGUI:
         self.style.map('TButton',
             background=[('active', '#404040'), ('disabled', '#2b2b2b')],
             foreground=[('disabled', '#666666')])
+        
+        # 状态栏按钮样式 - 小巧一点
+        self.style.configure('Status.TButton', font=('Segoe UI', 9), padding=(4, 0))
+        
+        # 状态栏按钮样式 - 小巧一点
+        self.style.configure('Status.TButton', font=('Segoe UI', 9), padding=(4, 0))
         
         # 配置复选框样式
         self.style.map('TCheckbutton',
@@ -79,8 +85,10 @@ class YtDlpGUI:
         self.url_frame = ttk.Frame(self.main_frame)
         self.url_frame.grid(row=0, column=1, padx=12, pady=(12, 6), sticky=tk.W + tk.E)
         
-        self.url_entry = ttk.Entry(self.url_frame, width=60)
+        self.url_var = tk.StringVar()
+        self.url_entry = ttk.Entry(self.url_frame, width=60, textvariable=self.url_var)
         self.url_entry.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        self.url_var.trace_add("write", self.on_url_change)
         self.url_entry.bind('<Return>', lambda e: self.start_download())  # Enter 键触发下载
         
         self.clear_button = ttk.Button(self.url_frame, text="Clear", width=5, command=self.clear_url)
@@ -97,10 +105,17 @@ class YtDlpGUI:
         self.proxy_entry = ttk.Entry(self.main_frame, width=60, state=tk.DISABLED)
         self.proxy_entry.grid(row=1, column=1, padx=12, pady=6, sticky=tk.W + tk.E)
 
+        # 选项与下载按钮区域（合二为一）
+        self.action_area = ttk.Frame(self.main_frame)
+        self.action_area.grid(row=2, column=0, columnspan=2, padx=12, pady=10, sticky=(tk.W, tk.E))
+        
+        self.options_container = ttk.Frame(self.action_area)
+        self.options_container.pack(side=tk.LEFT, fill=tk.Y)
+
         # Cookie设置
         self.cookie_var = tk.BooleanVar()
-        self.cookie_frame = ttk.Frame(self.main_frame)
-        self.cookie_frame.grid(row=2, column=0, columnspan=2, padx=12, pady=6, sticky=tk.W)
+        self.cookie_frame = ttk.Frame(self.options_container)
+        self.cookie_frame.pack(side=tk.TOP, anchor=tk.W, pady=2)
         
         self.use_cookie_checkbutton = ttk.Checkbutton(self.cookie_frame, text="Use Cookie",
                                                      variable=self.cookie_var)
@@ -110,8 +125,8 @@ class YtDlpGUI:
         self.edit_cookie_button.pack(side=tk.LEFT, padx=8)
 
         # 格式选项区域
-        self.format_frame = ttk.Frame(self.main_frame)
-        self.format_frame.grid(row=3, column=0, columnspan=2, padx=12, pady=6, sticky=tk.W)
+        self.format_frame = ttk.Frame(self.options_container)
+        self.format_frame.pack(side=tk.TOP, anchor=tk.W, pady=2)
         
         self.mp4_var = tk.BooleanVar()
         self.mp4_checkbutton = ttk.Checkbutton(self.format_frame, text="Download as MP4",
@@ -123,6 +138,21 @@ class YtDlpGUI:
                                              variable=self.mp3_var)
         self.mp3_checkbutton.pack(side=tk.LEFT, padx=8)
 
+        # 下载按钮 - 移动到选项右侧，更加紧凑
+        self.download_button = tk.Button(self.action_area, 
+                                       text="Download（下载）", 
+                                       command=self.start_download,
+                                       font=('Segoe UI', 11, 'bold'),
+                                       fg='#00ff00',
+                                       bg='#333333',
+                                       activebackground='#444444',
+                                       activeforeground='#5dfc5d',
+                                       relief=tk.FLAT,
+                                       cursor='hand2',
+                                       padx=40,
+                                       pady=10)
+        self.download_button.pack(side=tk.RIGHT, padx=12)
+
         # # 按钮区域
         # self.button_frame = ttk.Frame(self.main_frame)
         # self.button_frame.grid(row=4, column=0, columnspan=2, pady=(12, 12))
@@ -131,34 +161,41 @@ class YtDlpGUI:
 
         # 历史记录和日志切换区域
         self.content_frame = ttk.Frame(self.main_frame)
-        self.content_frame.grid(row=5, column=0, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S), padx=12, pady=(0, 12))
+        self.content_frame.grid(row=3, column=0, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S), padx=12, pady=(0, 12))
         
-        # 切换按钮区域
-        self.toggle_frame = ttk.Frame(self.content_frame)
-        self.toggle_frame.pack(fill=tk.X, padx=0, pady=(0, 8))
-        
-        self.show_history_var = tk.BooleanVar(value=True)  # 默认显示历史记录
-        self.toggle_button = ttk.Button(self.toggle_frame, text="显示日志", command=self.toggle_content)
-        self.toggle_button.pack(side=tk.LEFT, padx=0)
-        
-        # 打开下载文件夹按钮
-        self.open_folder_button = ttk.Button(self.toggle_frame, text="打开下载文件夹", command=self.open_download_folder)
-        self.open_folder_button.pack(side=tk.LEFT, padx=(12, 0))
-
-        # self.download_button = ttk.Button(self.toggle_frame, text="Download", command=self.start_download )
-        self.download_button = ttk.Button(self.toggle_frame, text="Download", command=self.start_download , style='TButton')
-
-        self.download_button.pack(side=tk.RIGHT, padx=8)
-        
-        # 历史记录区域
-        self.history_label = ttk.Label(self.content_frame, text="历史记录:")
-        self.history_label.pack(anchor=tk.W, padx=0, pady=(0, 4))
-        
+        # 历史记录区域 - 整合边框和按钮
         self.history_frame = ttk.Frame(self.content_frame)
         self.history_frame.pack(fill=tk.BOTH, expand=True, padx=0, pady=0)
         
-        self.history_listbox = tk.Listbox(self.history_frame, bg='#2b2b2b', fg='white',
-                                          selectbackground='#404040', font=('Segoe UI', 9))
+        # 内部标题和清空按钮区域
+        self.history_inner_header = ttk.Frame(self.history_frame)
+        self.history_inner_header.pack(fill=tk.X, padx=2, pady=2)
+        
+        self.history_label = ttk.Label(self.history_inner_header, text="历史记录:", font=('Segoe UI', 9, 'bold'))
+        self.history_label.pack(side=tk.LEFT, padx=5)
+        
+        self.clear_history_button = tk.Button(self.history_inner_header, 
+                                            text="清空记录", 
+                                            command=self.clear_history,
+                                            font=('Segoe UI', 8),
+                                            fg='#888888',
+                                            bg='#2b2b2b',
+                                            activebackground='#404040',
+                                            activeforeground='white',
+                                            relief=tk.FLAT,
+                                            padx=8)
+        self.clear_history_button.pack(side=tk.RIGHT, padx=5)
+        
+        # 列表框 - 使用灰色边框，去除亮白色
+        self.history_listbox = tk.Listbox(self.history_frame, 
+                                          bg='#2b2b2b', 
+                                          fg='#cccccc',
+                                          selectbackground='#404040', 
+                                          font=('Segoe UI', 9),
+                                          borderwidth=0,
+                                          highlightthickness=1,
+                                          highlightbackground='#555555',  # 深灰色边框
+                                          highlightcolor='#777777')       # 选中时的边框
         self.history_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         self.history_listbox.bind('<Double-Button-1>', self.on_history_select)
         
@@ -185,7 +222,27 @@ class YtDlpGUI:
         master.grid_columnconfigure(0, weight=1)
         master.grid_rowconfigure(1, weight=1)  # 主框架可扩展
         self.main_frame.grid_columnconfigure(1, weight=1)
-        self.main_frame.grid_rowconfigure(5, weight=1)  # 内容区域可扩展
+        self.main_frame.grid_rowconfigure(3, weight=1)  # 内容区域可扩展
+        
+        # 状态栏框架
+        self.status_frame = ttk.Frame(master, style='TFrame')
+        self.status_frame.grid(row=2, column=0, sticky=(tk.W, tk.E))
+        
+        self.status_var = tk.StringVar(value="准备就绪")
+        self.status_bar = ttk.Label(self.status_frame, textvariable=self.status_var, relief=tk.FLAT, anchor=tk.W)
+        self.status_bar.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        
+        self.style.configure('Status.TLabel', background='#333333', foreground='#aaaaaa', font=('Segoe UI', 9), padding=(10, 2))
+        self.status_bar.configure(style='Status.TLabel')
+        self.status_frame.configure(style='Status.TLabel') # 给框架也上色
+
+        # 将切换日志和打开文件夹按钮放入状态栏右侧
+        self.show_history_var = tk.BooleanVar(value=True)
+        self.toggle_button = ttk.Button(self.status_frame, text="显示日志", command=self.toggle_content, style='Status.TButton')
+        self.toggle_button.pack(side=tk.RIGHT, padx=2, pady=1)
+        
+        self.open_folder_button = ttk.Button(self.status_frame, text="打开文件夹", command=self.open_download_folder, style='Status.TButton')
+        self.open_folder_button.pack(side=tk.RIGHT, padx=2, pady=1)
 
         # 设置窗口最小尺寸
         master.update_idletasks()
@@ -245,17 +302,23 @@ class YtDlpGUI:
         if self.show_history_var.get():
             # 切换到日志
             self.history_frame.pack_forget()
-            self.history_label.pack_forget()
             self.log_frame.pack(fill=tk.BOTH, expand=True, padx=0, pady=0)
             self.toggle_button.config(text="显示历史记录")
             self.show_history_var.set(False)
         else:
             # 切换到历史记录
             self.log_frame.pack_forget()
-            self.history_label.pack(anchor=tk.W, padx=0, pady=(0, 4))
             self.history_frame.pack(fill=tk.BOTH, expand=True, padx=0, pady=0)
             self.toggle_button.config(text="显示日志")
             self.show_history_var.set(True)
+
+    def clear_history(self):
+        """清空所有历史记录"""
+        if messagebox.askyesno("确认", "确定要清空所有历史记录吗？"):
+            self.history_data = []
+            self.save_history()
+            self.update_history_display()
+            self.log("History cleared.")
 
     def open_github_repo(self):
         webbrowser.open("https://github.com/cornradio/ytdlpgui")
@@ -345,7 +408,9 @@ class YtDlpGUI:
                 url = self.history_data[actual_index].get('url', '')
                 self.url_entry.delete(0, tk.END)
                 self.url_entry.insert(0, url)
-                self.log(f"Selected from history: {self.history_data[actual_index].get('title', 'Unknown')}")
+                title = self.history_data[actual_index].get('title', 'Unknown')
+                self.log(f"Selected from history: {title}")
+                self.set_status(f"已从历史记录加载: {title}")
 
     def open_settings(self):
         """打开 settings.ini 文件"""
@@ -453,6 +518,7 @@ class YtDlpGUI:
             self.log("Timeout getting video title")
         except Exception as e:
             self.log(f"Could not get video title: {e}")
+            self.set_status(f"获取视频信息失败")
         return None
 
     def start_download(self):
@@ -464,13 +530,16 @@ class YtDlpGUI:
 
         # 获取视频标题并添加到历史记录
         self.log("Getting video information...")
+        self.set_status("正在请求视频信息，请稍候...")
         video_title = self.get_video_title(url)
         if video_title:
             self.add_to_history(url, video_title)
             self.log(f"Video title: {video_title}")
+            self.set_status(f"解析成功: {video_title}", duration=5000)
         else:
             # 即使获取标题失败，也记录URL
             self.add_to_history(url, None)
+            self.set_status("无法解析视频标题，直接开始下载")
 
         # 使用配置文件中的 ytdlp 路径
         command = [self.ytdlp_path, url] # mac 需要加入两个单引号抱住url
@@ -544,6 +613,7 @@ class YtDlpGUI:
             else:
                 subprocess.Popen(['x-terminal-emulator', '-e', cmd_str])
 
+        self.set_status("下载任务已在独立窗口中启动", duration=5000)
         self.download_button.config(state=tk.NORMAL)
 
     def run_yt_dlp(self, command):
@@ -595,6 +665,24 @@ class YtDlpGUI:
 
     def log(self, message):
         self.queue.put(message)
+
+    def set_status(self, message, duration=3000):
+        """设置状态栏信息，duration 毫秒后恢复"""
+        self.status_var.set(message)
+        # 取消之前的恢复任务（如果有）
+        if hasattr(self, '_status_timer'):
+            self.master.after_cancel(self._status_timer)
+        self._status_timer = self.master.after(duration, lambda: self.status_var.set("准备就绪"))
+
+    def on_url_change(self, *args):
+        """自动删除 URL 中的参数"""
+        url = self.url_var.get()
+        if '?' in url:
+            base_url = url.split('?')[0]
+            if base_url != url:
+                # 使用 after 处理以避免在 trace 回调中直接修改导致的一些界面焦点问题
+                self.master.after_idle(lambda: self.url_var.set(base_url))
+                self.set_status("已自动删除 URL 中的冗余参数 (?)")
 
     def process_queue(self):
         try:
