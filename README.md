@@ -27,6 +27,21 @@
 3. 选择是否需要使用cookie
 4. 点击Download开始下载
 
+## 使用方法 formac
+mac版本需要从源代码使用,建议创建alias快捷启动
+```
+alias ytdlpgui="cd /Users/kasusa/Documents/GitHub/ytdlpgui;source .venv/bin/activate;python ytdlpgui.mac.py"
+```
+哦对了使用之前还要安装好ffmpeg和yt-dlp,我想这对一个mac用户来说都很简单.
+
+```
+安装包管理器 (Homebrew): 
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+一键安装依赖: 
+brew install ffmpeg yt-dlp
+```
+
 ## 打包
 
 ```bash
