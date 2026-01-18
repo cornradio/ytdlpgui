@@ -4,3 +4,4 @@ ytdlpgui.spec
 .DS_Store
 cookie.txt
 .vscode/
+download_history.json
