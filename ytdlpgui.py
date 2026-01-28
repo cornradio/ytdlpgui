@@ -87,7 +87,7 @@ class YtDlpGUI:
         
         self.url_var = tk.StringVar()
         self.url_entry = ttk.Entry(self.url_frame, width=60, textvariable=self.url_var)
-        self.url_entry.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        self.url_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=2)  # Use ipady to match other entries and fill X only
         self.url_var.trace_add("write", self.on_url_change)
         self.url_entry.bind('<Return>', lambda e: self.start_download())  # Enter 键触发下载
         
@@ -95,6 +95,7 @@ class YtDlpGUI:
         self.clear_button.pack(side=tk.LEFT, padx=(4, 0))
         
         self.url_frame.grid_columnconfigure(0, weight=1)
+        
 
         # 代理设置
         self.proxy_var = tk.BooleanVar()
@@ -103,11 +104,29 @@ class YtDlpGUI:
         self.use_proxy_checkbutton.grid(row=1, column=0, padx=12, pady=6, sticky=tk.W)
 
         self.proxy_entry = ttk.Entry(self.main_frame, width=60, state=tk.DISABLED)
-        self.proxy_entry.grid(row=1, column=1, padx=12, pady=6, sticky=tk.W + tk.E)
+        self.proxy_entry.grid(row=1, column=1, padx=12, pady=6, sticky=tk.W + tk.E, ipady=2)
 
-        # 选项与下载按钮区域（合二为一）
+        # 重命名设置 (Row 2)
+        self.rename_var = tk.BooleanVar()
+        self.rename_checkbutton = ttk.Checkbutton(self.main_frame, text="重命名:",
+                                                 variable=self.rename_var)
+        self.rename_checkbutton.grid(row=2, column=0, padx=12, pady=6, sticky=tk.W)
+
+        self.rename_frame = ttk.Frame(self.main_frame)
+        self.rename_frame.grid(row=2, column=1, padx=12, pady=6, sticky=tk.W + tk.E)
+
+        ttk.Label(self.rename_frame, text="文件名:").pack(side=tk.LEFT, padx=(0, 4))
+        self.rename_entry = ttk.Entry(self.rename_frame, width=25)
+        self.rename_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=2)
+
+        ttk.Label(self.rename_frame, text="Tag:").pack(side=tk.LEFT, padx=(8, 4))
+        self.tag_entry = ttk.Combobox(self.rename_frame, width=15)
+        self.tag_entry.pack(side=tk.LEFT, ipady=2)
+        self.tag_entry.bind("<<ComboboxSelected>>", self.on_tag_select)
+
+        # 选项与下载按钮区域 (Row 3)
         self.action_area = ttk.Frame(self.main_frame)
-        self.action_area.grid(row=2, column=0, columnspan=2, padx=12, pady=10, sticky=(tk.W, tk.E))
+        self.action_area.grid(row=3, column=0, columnspan=2, padx=12, pady=10, sticky=(tk.W, tk.E))
         
         self.options_container = ttk.Frame(self.action_area)
         self.options_container.pack(side=tk.LEFT, fill=tk.Y)
@@ -159,9 +178,9 @@ class YtDlpGUI:
         
 
 
-        # 历史记录和日志切换区域
+        # 历史记录和日志切换区域 (Row 4)
         self.content_frame = ttk.Frame(self.main_frame)
-        self.content_frame.grid(row=3, column=0, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S), padx=12, pady=(0, 12))
+        self.content_frame.grid(row=4, column=0, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S), padx=12, pady=(0, 12))
         
         # 历史记录区域 - 整合边框和按钮
         self.history_frame = ttk.Frame(self.content_frame)
@@ -215,6 +234,10 @@ class YtDlpGUI:
         self.history_file = 'download_history.json'
         self.load_history()
         
+        # 加载 Tags
+        self.tags_data = []
+        self.load_tags()
+        
         # 默认显示历史记录，隐藏日志
         self.log_frame.pack_forget()
 
@@ -222,7 +245,7 @@ class YtDlpGUI:
         master.grid_columnconfigure(0, weight=1)
         master.grid_rowconfigure(1, weight=1)  # 主框架可扩展
         self.main_frame.grid_columnconfigure(1, weight=1)
-        self.main_frame.grid_rowconfigure(3, weight=1)  # 内容区域可扩展
+        self.main_frame.grid_rowconfigure(4, weight=1)  # 内容区域可扩展
         
         # 状态栏框架
         self.status_frame = ttk.Frame(master, style='TFrame')
@@ -412,6 +435,47 @@ class YtDlpGUI:
                 self.log(f"Selected from history: {title}")
                 self.set_status(f"已从历史记录加载: {title}")
 
+    def load_tags(self):
+        """加载已保存的 tags"""
+        try:
+            if os.path.exists('tags_history.json'):
+                with open('tags_history.json', 'r', encoding='utf-8') as f:
+                    self.tags_data = json.load(f)
+            else:
+                self.tags_data = []
+            self.update_tag_combobox()
+        except Exception as e:
+            self.log(f"Error loading tags: {e}")
+            self.tags_data = []
+
+    def save_tags(self):
+        """保存 tags"""
+        try:
+            with open('tags_history.json', 'w', encoding='utf-8') as f:
+                json.dump(self.tags_data, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            self.log(f"Error saving tags: {e}")
+
+    def update_tag_combobox(self):
+        """更新 tag 下拉菜单选项"""
+        values = list(self.tags_data)
+        if values:
+            values.append("--- 清除所有 Tag ---")
+        self.tag_entry['values'] = values
+
+    def on_tag_select(self, event):
+        """处理 tag 下拉菜单选择"""
+        selected = self.tag_entry.get()
+        if selected == "--- 清除所有 Tag ---":
+            if messagebox.askyesno("确认", "确定要清除所有已保存的 Tag 吗？"):
+                self.tags_data = []
+                self.save_tags()
+                self.update_tag_combobox()
+                self.tag_entry.set("")
+                self.log("All tags cleared.")
+            else:
+                self.tag_entry.set("")
+
     def open_settings(self):
         """打开 settings.ini 文件"""
         settings_path = os.path.abspath('settings.ini')
@@ -591,7 +655,33 @@ class YtDlpGUI:
         if self.mp3_var.get():
             command.extend(["--extract-audio", "--audio-format", "mp3"])
         
-        command.extend(["-o", "%(title)s-%(id)s.%(ext)s"])
+        if self.rename_var.get():
+            base_name = self.rename_entry.get().strip()
+            tag_val = self.tag_entry.get().strip()
+            
+            if base_name or tag_val:
+                # 如果没有写文件名但写了tag，则使用视频原本标题作为文件名
+                if not base_name:
+                    new_name = f"%(title)s"
+                else:
+                    new_name = base_name
+                
+                if tag_val:
+                    new_name = f"{new_name}#{tag_val}"
+                    # 记录新 Tag
+                    if tag_val not in self.tags_data:
+                        self.tags_data.append(tag_val)
+                        self.save_tags()
+                        self.update_tag_combobox()
+                
+                # 确保文件名中不包含非法字符（简单处理）
+                for char in ['<', '>', ':', '"', '/', '\\', '|', '?', '*']:
+                    new_name = new_name.replace(char, '_')
+                command.extend(["-o", f"{new_name}.%(ext)s"])
+            else:
+                command.extend(["-o", "%(title)s-%(id)s.%(ext)s"])
+        else:
+            command.extend(["-o", "%(title)s-%(id)s.%(ext)s"])
         
         # 使用配置文件中的下载路径
         command.extend(["-P", self.download_path])
