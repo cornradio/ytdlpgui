@@ -256,6 +256,9 @@ class YtDlpGUI:
         self.open_folder_button = ttk.Button(self.status_frame, text="打开文件夹", command=self.open_download_folder, style='Status.TButton')
         self.open_folder_button.pack(side=tk.RIGHT, padx=2, pady=1)
 
+        self.upgrade_button = ttk.Button(self.status_frame, text="升级 yt-dlp", command=self.upgrade_ytdlp, style='Status.TButton')
+        self.upgrade_button.pack(side=tk.RIGHT, padx=2, pady=1)
+
         # 设置窗口最小尺寸
         master.update_idletasks()
         master.minsize(500, 400)
@@ -634,6 +637,18 @@ class YtDlpGUI:
 
         self.set_status("下载任务已在独立窗口中启动", duration=5000)
         self.download_button.config(state=tk.NORMAL)
+
+    def upgrade_ytdlp(self):
+        """升级 yt-dlp"""
+        cmd_str = "pipx upgrade yt-dlp"
+        self.log(f"Running: {cmd_str}")
+        
+        try:
+            apple_script = f'tell application "Terminal" to do script "{cmd_str}"'
+            subprocess.Popen(['osascript', '-e', apple_script])
+            self.set_status("正在独立窗口中升级 yt-dlp...", duration=5000)
+        except Exception as e:
+            self.log(f"Error starting upgrade: {e}")
 
     def run_yt_dlp(self, command):
         # 这个方法不再需要，因为我们直接在 Terminal 窗口中执行命令
