@@ -100,9 +100,12 @@ class YtDlpGUI:
         self.url_var = tk.StringVar()
         self.url_entry = ttk.Entry(self.url_frame, width=60, textvariable=self.url_var)
         self.url_entry.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        self.url_var.trace_add("write", self.on_url_change)
+        # self.url_var.trace_add("write", self.on_url_change) # 移除自动去除参数功能
         self.url_entry.bind('<Return>', lambda e: self.start_download())  # Enter 键触发下载
         
+        self.clean_button = ttk.Button(self.url_frame, text="Clean", width=5, command=self.clean_url_params)
+        self.clean_button.pack(side=tk.LEFT, padx=(4, 0))
+
         self.clear_button = ttk.Button(self.url_frame, text="Clear", width=5, command=self.clear_url)
         self.clear_button.pack(side=tk.LEFT, padx=(4, 0))
         
@@ -679,15 +682,15 @@ class YtDlpGUI:
             self.master.after_cancel(self._status_timer)
         self._status_timer = self.master.after(duration, lambda: self.status_var.set("准备就绪"))
 
-    def on_url_change(self, *args):
-        """自动删除 URL 中的参数"""
-        url = self.url_var.get()
+    def clean_url_params(self):
+        """手动删除 URL 中的参数 (?)"""
+        url = self.url_var.get().strip()
         if '?' in url:
             base_url = url.split('?')[0]
             if base_url != url:
-                # 使用 after 处理以避免在 trace 回调中直接修改导致的一些界面焦点问题
-                self.master.after_idle(lambda: self.url_var.set(base_url))
-                self.set_status("已自动删除 URL 中的冗余参数 (?)")
+                self.url_var.set(base_url)
+                self.set_status("已手动删除 URL 中的冗余参数 (?)")
+                self.log(f"Cleaned URL: {base_url}")
 
     def process_queue(self):
         try:
