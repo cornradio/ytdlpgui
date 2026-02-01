@@ -60,6 +60,7 @@ build.bat
 ## 其他下载
 ytdlpgui
 https://github.com/cornradio/ytdlpgui/releases/
+⚠️注意這個依賴需要经常更新，所以我建议你使用包管理器来安装比如：pipx install yt-dlp / pipx upgarde yt-dlp
 
 ytdlpgui（支持cookie的版本）
 https://github.com/cornradio/ytdlpgui/issues/2#issuecomment-3329523840
