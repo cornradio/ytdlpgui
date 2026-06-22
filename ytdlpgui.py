@@ -57,7 +57,7 @@ class YtDlpGUI(ctk.CTk):
     def __init__(self):
         super().__init__()
 
-        self.title("yt-dlp GUI")
+        self.title("yt-dlp GUI v3.0 by kasusa")
         self.geometry("900x650")
         self.minsize(650, 500)
 
@@ -287,11 +287,12 @@ class YtDlpGUI(ctk.CTk):
                       text_color=("gray20", "gray80"),
                       border_width=1, border_color=("gray60", "gray40"),
                       font=ctk.CTkFont(size=11), command=self.check_environment).pack(side="left", padx=2)
-        ctk.CTkButton(status_btns, text="升级 yt-dlp", width=80, height=24,
+        self.upgrade_btn = ctk.CTkButton(status_btns, text="升级 yt-dlp", width=80, height=24,
                       fg_color="transparent", hover_color=("gray85", "gray30"),
                       text_color=("gray20", "gray80"),
                       border_width=1, border_color=("gray60", "gray40"),
-                      font=ctk.CTkFont(size=11), command=self.upgrade_ytdlp).pack(side="left", padx=2)
+                      font=ctk.CTkFont(size=11), command=self.upgrade_ytdlp)
+        self.upgrade_btn.pack(side="left", padx=2)
         ctk.CTkButton(status_btns, text="打开文件夹", width=80, height=24,
                       fg_color="transparent", hover_color=("gray85", "gray30"),
                       text_color=("gray20", "gray80"),
@@ -336,6 +337,7 @@ class YtDlpGUI(ctk.CTk):
         menu.add_command(label="GitHub 仓库", command=self.open_github_repo)
         menu.add_command(label="快速答疑 FAQ", command=self.open_github_faq)
         menu.add_command(label="bilibili 教程", command=self.open_bilibili_video)
+        menu.add_command(label="kasusa的Appstore", command=self.open_appstore)
         menu.add_separator()
         menu.add_command(label="下载 yt-dlp", command=self.get_ytdlp)
         menu.add_command(label="下载 ffmpeg", command=self.get_ffmpeg)
@@ -791,34 +793,58 @@ class YtDlpGUI(ctk.CTk):
 
     # --- Upgrade ---
     def upgrade_ytdlp(self):
-        self.log("正在升级 yt-dlp...")
-        self.log("─" * 40)
-        self.log("升级方式取决于你的安装方式:")
+        """Show popup menu with multiple upgrade method options."""
+        import tkinter as tk
+        menu = tk.Menu(self, tearoff=0)
+        menu.add_command(label="yt-dlp -U（自更新）",
+                         command=lambda: self._run_upgrade("yt-dlp -U",
+                                                           [self.ytdlp_path, "-U"]))
+        menu.add_command(label="pipx upgrade yt-dlp",
+                         command=lambda: self._run_upgrade("pipx upgrade yt-dlp",
+                                                           ["pipx", "upgrade", "yt-dlp"]))
+        menu.add_command(label="pip install --upgrade yt-dlp",
+                         command=lambda: self._run_upgrade("pip install --upgrade yt-dlp",
+                                                           ["pip", "install", "--upgrade", "yt-dlp"]))
+        menu.add_command(label="pip3 install --upgrade yt-dlp",
+                         command=lambda: self._run_upgrade("pip3 install --upgrade yt-dlp",
+                                                           ["pip3", "install", "--upgrade", "yt-dlp"]))
         if IS_MAC:
-            self.log("  • pip 安装:  pip3 install -U yt-dlp")
-            self.log("  • brew 安装: brew upgrade yt-dlp")
-            self.log("  • 二进制:    yt-dlp -U")
+            menu.add_command(label="brew upgrade yt-dlp",
+                             command=lambda: self._run_upgrade("brew upgrade yt-dlp",
+                                                               ["brew", "upgrade", "yt-dlp"]))
         elif IS_WIN:
-            self.log("  • pip 安装:  pip install -U yt-dlp")
-            self.log("  • scoop:     scoop update yt-dlp")
-            self.log("  • winget:    winget upgrade yt-dlp")
-            self.log("  • 二进制:    yt-dlp -U")
-        else:
-            self.log("  • pip 安装:  pip3 install -U yt-dlp")
-            self.log("  • 二进制:    yt-dlp -U")
+            menu.add_command(label="scoop update yt-dlp",
+                             command=lambda: self._run_upgrade("scoop update yt-dlp",
+                                                               ["scoop", "update", "yt-dlp"]))
+            menu.add_command(label="winget upgrade yt-dlp",
+                             command=lambda: self._run_upgrade("winget upgrade yt-dlp",
+                                                               ["winget", "upgrade", "yt-dlp"]))
+
+        # Position the popup at the status bar upgrade button if possible
+        try:
+            btn = self.upgrade_btn
+            x = btn.winfo_rootx()
+            y = btn.winfo_rooty() - btn.winfo_height() * 6
+        except:
+            x = self.winfo_pointerx()
+            y = self.winfo_pointery()
+        menu.tk_popup(x, y)
+
+    def _run_upgrade(self, label, cmd):
+        """Log the chosen method and start the upgrade thread."""
+        self.log(f"正在升级 yt-dlp（方式: {label}）...")
         self.log("─" * 40)
-        self.log("正在尝试自动升级 (yt-dlp -U)...")
-        self.set_status("正在升级...")
-        thread = threading.Thread(target=self._upgrade_worker, daemon=True)
+        self.set_status(f"正在升级... ({label})")
+        thread = threading.Thread(target=self._upgrade_worker, args=(label, cmd), daemon=True)
         thread.start()
 
-    def _upgrade_worker(self):
+    def _upgrade_worker(self, label, cmd):
         try:
             result = _run([self.ytdlp_path, "--version"], capture_output=True, text=True, timeout=10)
             ver = result.stdout.strip() if result.returncode == 0 else "未知"
             self.queue.put(f"当前版本: {ver}")
 
-            up = _run([self.ytdlp_path, "-U"], capture_output=True, text=True, timeout=120)
+            up = _run(cmd, capture_output=True, text=True, timeout=120)
             output = (up.stdout.strip() + "\n" + up.stderr.strip()).strip()
             if output:
                 for line in output.splitlines():
@@ -833,11 +859,13 @@ class YtDlpGUI(ctk.CTk):
                     self.queue.put(f"已是最新版本: {new_ver}")
                 self.after(0, lambda: self.set_status(f"yt-dlp {new_ver}", duration=5000))
             else:
-                self.queue.put("自动升级失败，请尝试手动升级（见上方提示）")
+                self.queue.put(f"升级失败（{label}），请检查该工具是否已安装")
                 self.after(0, lambda: self.set_status("升级失败，请手动升级", duration=5000))
+        except FileNotFoundError:
+            self.queue.put(f"找不到命令: {cmd[0]}，请确认已安装该工具")
+            self.after(0, lambda: self.set_status("升级失败：命令未找到", duration=5000))
         except Exception as e:
             self.queue.put(f"升级出错: {e}")
-            self.queue.put("请尝试手动升级（见上方提示）")
 
     # --- Open folder ---
     def open_download_folder(self):
@@ -863,6 +891,9 @@ class YtDlpGUI(ctk.CTk):
 
     def open_bilibili_video(self):
         webbrowser.open("https://www.bilibili.com/video/BV1oJ7ezEEqK")
+
+    def open_appstore(self):
+        webbrowser.open("https://appstore.cornradio.org/")
 
     def get_ytdlp(self):
         webbrowser.open("https://github.com/yt-dlp/yt-dlp/releases/latest")
